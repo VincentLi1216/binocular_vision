@@ -12,6 +12,9 @@ id_rsa.pub
 # Icon must end with two \r
 Icon
 
+# images
+*.png
+*.jpg
 
 # Thumbnails
 ._*
