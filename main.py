@@ -1,124 +1,64 @@
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
 import cv2
-import numpy as np
-import matplotlib.pyplot as plt
+
+from util import divide_img, stereo_matching
+import tkinter as tk
+
+def cv2img_to_tkimg(cv2_img):
+    # 如果圖片數據類型是 CV_16S，將其轉換為 CV_8U
+    if cv2_img.dtype == 'int16':
+        cv2_img = cv2.convertScaleAbs(cv2_img)
+
+    # 判斷是否是灰階圖片
+    if len(cv2_img.shape) == 2:
+        # 將灰階圖片轉換為三通道
+        cv2_img = cv2.cvtColor(cv2_img, cv2.COLOR_GRAY2RGB)
+    else:
+        # 將 BGR 格式轉換為 RGB 格式
+        cv2_img = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)
+
+    # 轉換為 PIL 圖片
+    pil_img = Image.fromarray(cv2_img)
+
+    # 將 PIL 圖片轉換為 Tkinter 圖片
+    tk_img = ImageTk.PhotoImage(image=pil_img)
+    return tk_img
 
 
-# list all pngs under source folder
-def list_all_pngs(path):
-    import os
-
-    pngs = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith(".png"):
-                pngs.append(os.path.join(root, file))
-    return pngs
-
-
-def apply_jet_colormap_and_overlay(color_image, grayscale_image):
-    # Check if images are loaded properly
-    if color_image is None or grayscale_image is None:
-        raise ValueError("One or both images are not loaded properly.")
+def update_image(scale_value1, scale_value2):
+    # 這裡應該是更新圖片的邏輯
+    # 例如，使用 scale_value1 和 scale_value2 調整圖片的某些屬性
+    print(f"Slider 1: {scale_value1}, Slider 2: {scale_value2}")
+    # 更新圖片顯示...
+    left_img, right_img = divide_img("source-4/Explorer_HD720_SN27863180_19-40-24.png")
+    updated_image = stereo_matching(left_img, right_img, resize_ratio=0.35, numDisparities=64, blockSize=5)
+    # cv2.imshow("Disparity", updated_image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    updated_image = cv2img_to_tkimg(left_img)
+    image_label.config(image=updated_image)
     
+def slider_changed(event):
+    scale_value1 = slider1.get()
+    scale_value2 = slider2.get()
+    update_image(scale_value1, scale_value2)
 
-    # Resize grayscale image to match color image dimensions
-    grayscale_image_resized = cv2.resize(
-        grayscale_image, (color_image.shape[1], color_image.shape[0])
-    )
+# 創建主窗口
+root = tk.Tk()
+root.title("圖片調整器")
 
-    # 如果是浮點數影像，先轉換為8位元
-    if grayscale_image_resized.dtype != np.uint8:
-        grayscale_image_resized = cv2.normalize(grayscale_image_resized, None, 0, 255, cv2.NORM_MINMAX)
-        grayscale_image_resized = cv2.convertScaleAbs(grayscale_image_resized)
+# 創建滑動條
+slider1 = ttk.Scale(root, from_=0, to=100, orient='horizontal', command=slider_changed)
+slider1.pack()
 
-    # print(grayscale_image)
+slider2 = ttk.Scale(root, from_=0, to=100, orient='horizontal', command=slider_changed)
+slider2.pack()
 
-    # Apply jet colormap to the grayscale image
-    color_mapped_image = cv2.applyColorMap(grayscale_image_resized, cv2.COLORMAP_JET)
+# 創建顯示圖片的標籤
+image_label = tk.Label(root)
+image_label.pack()
 
-    # Overlay the color mapped image on the color image
-    overlaid_image = cv2.addWeighted(color_image, 0.5, color_mapped_image, 0.5, 0)
-
-    return overlaid_image
-
-
-# divide img into 2 from the certer
-def divide_img(img_path):
-    # read as gray scale
-    img = cv2.imread(img_path)
-    height, width = img.shape[:2]
-    center = (width // 2, height // 2)
-    left_img = img[0:height, 0 : center[0]]
-    right_img = img[0:height, center[0] : width]
-    return left_img, right_img
-
-
-def stereo_matching(left_img, right_img):
-    print(left_img.shape)
-    resize_ratio = 0.2
-    resize_x = int(2208 * resize_ratio)
-    resize_y = int(1242 * resize_ratio)
-    print(resize_x, resize_y)
-    # resize image
-    left_img = cv2.resize(left_img, (resize_x, resize_y))
-    right_img = cv2.resize(right_img, (resize_x, resize_y))
-
-    # 使用 StereoBM 或 StereoSGBM 來計算視差
-    # 這裡使用 StereoBM 作為示例
-    stereo = cv2.StereoSGBM_create(numDisparities=64, blockSize=31)
-    gray_left = cv2.cvtColor(left_img, cv2.COLOR_BGR2GRAY)
-    gray_right = cv2.cvtColor(right_img, cv2.COLOR_BGR2GRAY)
-    disparity = stereo.compute(gray_left, gray_right)
-
-    # generate overly image
-    overlay_img = apply_jet_colormap_and_overlay(left_img, disparity)
-    overlay_img = cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB)
-
-    # show disparity and two images with matplotlib with subplots
-    plt.figure(figsize=(40, 10))  # Increase the figure size to make it larger
-
-    plt.subplot(221)
-    left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
-    plt.imshow(left_img)
-    plt.title("Left Image")
-
-    plt.subplot(222)
-    right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
-    plt.imshow(right_img, cmap="gray")
-    plt.title("Right Image")
-
-    plt.subplot(223)
-    plt.imshow(disparity, cmap="jet")
-    plt.title("Disparity Map")
-
-    plt.subplot(224)
-    plt.imshow(overlay_img)
-    plt.title("Overlay Image")
-    plt.show()
-
-    # 視差圖可能需要一些後處理來改善結果
-    # 例如使用濾波器或者對視差值進行範圍限定
-
-    # 將視差圖轉換為深度圖
-    # 這需要相機的焦距 (f) 和基線距離 (B)
-    # 深度 Z 可以通過 Z = f * B / disparity 計算
-    # 這裡假設焦距和基線距離已知
-    f = 1.0  # 替換為實際的焦距值
-    B = 1.0  # 替換為實際的基線距離
-
-    # 計算深度圖，避免除以零
-    with np.errstate(divide="ignore"):
-        depth = f * B / disparity
-
-    # 深度圖的值可能需要根據你的具體應用進行調整和範圍限定
-
-    # 由於我無法直接展示生成的深度圖，這段代碼應作為指導性範例
-    # 你需要根據自己的具體情況進行調整和優化
-
-
-if __name__ == "__main__":
-    file_path = list_all_pngs("./source-4")
-    for img in file_path:
-        # print(img)
-        left_img, right_img = divide_img(img)
-        stereo_matching(left_img, right_img)
+# 開始主事件循環
+root.mainloop()
