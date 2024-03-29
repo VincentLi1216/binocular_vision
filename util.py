@@ -53,7 +53,7 @@ def apply_jet_colormap_and_overlay(color_image, grayscale_image):
 
     # 如果是浮點數影像，先轉換為8位元
     if grayscale_image_resized.dtype != np.uint8:
-        grayscale_image_resized = cv2.normalize(grayscale_image_resized, None, 0, 255, cv2.NORM_MINMAX)
+        # grayscale_image_resized = cv2.normalize(grayscale_image_resized, None, 0, 255, cv2.NORM_MINMAX)
         grayscale_image_resized = cv2.convertScaleAbs(grayscale_image_resized)
 
     # print(grayscale_image)
@@ -78,11 +78,11 @@ def divide_img(img_path):
     return left_img, right_img
 
 
-def stereo_matching(left_img, right_img, resize_ratio=0.3, numDisparities=64, blockSize=31, to_show=False):
-    print(left_img.shape)
+def stereo_matching(left_img, right_img, resize_ratio=0.3, numDisparities=64, blockSize=31, kernel_size = 13, blur_size=5, to_show=False):
+    # print(left_img.shape)
     resize_x = int(2208 * resize_ratio)
     resize_y = int(1242 * resize_ratio)
-    print(resize_x, resize_y)
+    # print(resize_x, resize_y)
     # resize image
     left_img = cv2.resize(left_img, (resize_x, resize_y))
     right_img = cv2.resize(right_img, (resize_x, resize_y))
@@ -95,8 +95,17 @@ def stereo_matching(left_img, right_img, resize_ratio=0.3, numDisparities=64, bl
     disparity = stereo.compute(gray_left, gray_right)
     disparity = normalize_grayscale_image(disparity)
 
+    # post processing
     # midian blur for disparity
-    disparity = cv2.medianBlur(disparity,5)
+    disparity = cv2.medianBlur(disparity,blur_size)
+    # 侵蝕
+    kernel = np.ones((kernel_size,kernel_size),np.uint8)
+    disparity = cv2.erode(disparity, kernel, iterations=1)
+    # 膨脹
+    disparity = cv2.dilate(disparity, kernel, iterations=1)
+    disparity = cv2.erode(disparity, kernel, iterations=1)
+    disparity = cv2.dilate(disparity, kernel, iterations=1)
+    
 
     if to_show:
 
@@ -152,7 +161,7 @@ def stereo_matching(left_img, right_img, resize_ratio=0.3, numDisparities=64, bl
 
 
 if __name__ == "__main__":
-    file_path = list_all_pngs("./source-4")
+    file_path = list_all_pngs("./source-5")
     for img in file_path:
         # print(img)
         left_img, right_img = divide_img(img)

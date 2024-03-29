@@ -16,6 +16,9 @@ Icon
 *.png
 *.jpg
 
+# 保留
+!demo/Explorer_HD720_SN27863180_15-41-53.png
+
 # Thumbnails
 ._*
 
