@@ -22,3 +22,8 @@ virtualenv -p <path to your python 3.9.5> venv
 ```sh
 sh run.sh
 ```
+
+## 6. Click on the url that gradio creates
+``` sh
+ex. Running on local URL:  http://127.0.0.1:7860
+```
