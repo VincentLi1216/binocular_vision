@@ -18,7 +18,7 @@ pip install virtualenv
 virtualenv -p <path to your python 3.9.5> venv
 ```
 
-## 5. Init the project
+## 5. Run the project
 ```sh
-sh init.sh
+sh run.sh
 ```
